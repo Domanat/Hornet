@@ -18,6 +18,7 @@ type User struct {
 	Passport     string
 	Gender       string
 	Email        string
+	Password     string
 	BirthDate    string
 	RegAddr      string
 	ActualAddr   string
@@ -35,21 +36,8 @@ func isValidEmail(email string) bool {
 	return re.MatchString(email)
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "UserCookie")
-
-	//if person is not authorised  forbid access
-	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
-
-	//if person is authorised then show home page
-
-}
-
 func isInDatabase(user User) bool {
-	query := fmt.Sprintf("SELECT * FROM users WHERE name='%s' OR email='%s' OR number='%s' OR registAddress", user.Name, user.Email, user.RegAddr)
+	query := fmt.Sprintf("SELECT * FROM users WHERE name='%s' OR email='%s' OR number='%s' OR registAddress='%s'", user.Name, user.Email, user.Number, user.RegAddr)
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -61,6 +49,15 @@ func isInDatabase(user User) bool {
 	} else {
 		return false
 	}
+}
+
+func thanks(w http.ResponseWriter, r *http.Request) {
+	tmpl := template.Must(template.ParseFiles("thanks.html"))
+
+	if r.FormValue("login") == "Log in" {
+		http.Redirect(w, r, "/login", http.StatusPermanentRedirect)
+	}
+	tmpl.Execute(w, nil)
 }
 
 func logup(w http.ResponseWriter, r *http.Request) {
@@ -79,17 +76,19 @@ func logup(w http.ResponseWriter, r *http.Request) {
 		user.Passport = r.FormValue("passport")
 		user.Gender = r.FormValue("gender")
 		user.Email = r.FormValue("email")
+		user.Password = r.FormValue("password")
 		user.BirthDate = r.FormValue("data")
 		user.RegAddr = r.FormValue("registAddress")
 		user.ActualAddr = r.FormValue("actualAddress")
 		user.DeliveryAddr = r.FormValue("deliveryAddress")
 
 		if !isValidEmail(user.Email) || isInDatabase(user) {
+			fmt.Println("Wrong email or already have an account")
 			w.WriteHeader(http.StatusUnauthorized)
 		} else {
 
-			query := fmt.Sprintf("INSERT INTO users(name, number, passport, date, sex, email, registAddress, actualAddress, deliveryAddress) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-				user.Name, user.Number, user.Passport, user.BirthDate, user.Gender, user.Email, user.RegAddr, user.ActualAddr, user.DeliveryAddr)
+			query := fmt.Sprintf("INSERT INTO users(name, number, passport, date, sex, email, password, registAddress, actualAddress, deliveryAddress) VALUES('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+				user.Name, user.Number, user.Passport, user.BirthDate, user.Gender, user.Email, user.Password, user.RegAddr, user.ActualAddr, user.DeliveryAddr)
 
 			rows, err := db.Query(query)
 			if err != nil {
@@ -118,4 +117,17 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl.Execute(w, nil)
+}
+
+func home(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "UserCookie")
+
+	//if person is not authorised  forbid access
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	//if person is authorised then show home page
+
 }
