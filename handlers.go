@@ -111,9 +111,23 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		//search in database and validate data
+		var user User
+		err := db.QueryRow("SELECT * FROM users WHERE email = ? AND password = ?", r.FormValue("email"), r.FormValue("password")).Scan(
+			&user.Name, &user.Number, &user.Passport, &user.BirthDate, &user.Gender, &user.Email, &user.Password, &user.RegAddr, &user.ActualAddr, &user.DeliveryAddr)
 
-		session.Values["authenticated"] = true
+		if err != nil {
+			session.Values["authenticated"] = false
+			session.Save(r, w)
+
+			http.Redirect(w, r, "", http.StatusUnauthorized)
+		}
+
+		session.Values["name"] = user.Name
+		session.Values["email"] = user.Email
+		session.Values["number"] = user.Number
+
 		session.Save(r, w)
+		http.Redirect(w, r, "/home", http.StatusPermanentRedirect)
 	}
 
 	tmpl.Execute(w, nil)
